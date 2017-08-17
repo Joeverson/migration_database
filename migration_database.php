@@ -78,11 +78,30 @@ class Migration_Database
         }else if(!array_key_exists('table',$array)){
             print '<br>Não foi encontrado no array "table"';
             die();
+        }else if(isset($array['where'])){
+            if(!is_array($array['where'])){
+                print '<br>Não foi encontrado no array o "where" que é um array onde chave e valor ex. "id"=>"3"';
+                die();
+            }else
+                {
+                    /**
+                     * caso tenh a um ou mais wheres(especificidade de dados a serem atualizados)
+                     * ele vai deixar montado o where para as querys.
+                    **/
+                    $q_where = [];
+                    foreach($array['where'] as $k=>$v){
+                        $q_where[] = "$k='$v'";
+                    }
+
+                    $array['where'] = implode(" and ", $q_where);
+                }
+
         }
 
         //ajeitando as variaveis
         $this->table = $array['table'];
         $this->pk= $array['pk'];
+        $this->where = isset($array['where']) ? "where ".$array['where'] : "";
 
         //conectando
         $this->conn();
@@ -116,7 +135,11 @@ class Migration_Database
             $name_colunm = [];
 
             //vendo query
-            $smtp = $this->conn[$origin]->query("select * from $this->table");
+            /**
+             * TODO fazer com que ele receba uma condição de search .. ta errado aqui owhere é só para teste
+             */
+
+            $smtp = $this->conn[$origin]->query("select * from $this->table $this->where");
 
             /**
              * condicional caso seja src e não encontre a tabela ele para toda a execução
@@ -151,7 +174,7 @@ class Migration_Database
             /**
              * pegando todas as informações da tabala(massa de dados)
             **/
-            $data = $this->conn[$origin]->query("select * from $this->table")->fetchAll(PDO::FETCH_ASSOC);
+            $data = $this->conn[$origin]->query("select * from $this->table $this->where")->fetchAll(PDO::FETCH_ASSOC);
 
             return ["colunms" => $name_colunm, "data" => $data];
 
@@ -187,12 +210,30 @@ class Migration_Database
     }
 
 
+    /**
+     * metodo resonsavel por forçar a criação de todos os registros
+     * ele deleta qualquer coisa na tabela de clone e cria tudo de novo
+     * baseado na src
+    **/
+    private function force_create($src)
+    {
+        $this->conn['clone']->query("delete from $this->table where $this->where");
+
+        foreach($src['data'] as $s)
+        {
+            $this->create_register($s);
+        }
+
+    }
+
     private function copy_data($src)
     {
 
         foreach($src['data'] as $s)
         {
-
+            /**
+             * TODO -> verificação zuada.. da uma olhada depois
+            **/
             $smtp = $this->conn['clone']->query("select " .$this->pk. " from ".$this->table." where ".$this->pk." = '".$s[$this->pk]."'")->fetch(2);
 
             if($smtp == false)
@@ -280,24 +321,22 @@ class Migration_Database
 
 }
 
-/**
- * dados de conexão
-**/
+
 $ar = [
     "src" => [
         "user" => '',
-        "host" => '',
-        "pass" => '',
+        "host" => '.db.4855800.hostedresource.com',
+        "pass" => '@',
         "database" => ''
     ],
     "clone" => [
         "user" => '',
         "host" => '',
-        "pass" => '',
-        "database" => ''
+        "pass" => '@',
+        "database" => 'pi'
     ],
 ];
 
 $migdb = new Migration_Database($ar);
 
-$migdb->migrate(['table'=>'log', "pk"=>'data_login']);
+$migdb->migrate(['table'=>'qualidade', "pk"=>'', 'where'=>['key'=>'val', 'key2'=>'val2']]);
