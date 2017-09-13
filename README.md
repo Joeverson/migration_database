@@ -1,5 +1,5 @@
 # migration_database
-the class usage for migration date into database
+migrate yours data between databases, easy and fast you can migrate datas of the a database sorce fro database clone or just table of the source database.
 # How use?
 
 Define the server source and the serve that clone in you database
