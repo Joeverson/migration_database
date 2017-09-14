@@ -4,12 +4,7 @@
  * User: anony
  * Date: 02/08/2017
  * Time: 17:44
- */
-ini_set("display_errors", 1);
-ini_set("display_startup_errors", 1);
-error_reporting(E_ALL);
-
-/**
+ *
  * array de configuração do migrate
  * arr = [
  * "src" => [
@@ -44,7 +39,7 @@ class Migration_Database
             try{
 
                 $this->conn[$db_origin] = new PDO("mysql:host=".$this->array[$db_origin]["host"].";dbname=".$this->array[$db_origin]["database"], $this->array[$db_origin]["user"], $this->array[$db_origin]["pass"], array(\PDO::ATTR_PERSISTENT => true));
-
+                print "\n\nConectado com ".$this->array[$db_origin]["host"]."\n\n";
             }catch(Exception $e){
                 print $e->getMessage();
             }
@@ -141,10 +136,20 @@ class Migration_Database
 
             $smtp = $this->conn[$origin]->query("select * from $this->table $this->where");
 
+
             /**
              * condicional caso seja src e não encontre a tabela ele para toda a execução
              **/
-            if($smtp->errorCode() != "00000" and $origin == "src"){
+            if($smtp == false){
+                print "Tabela de origem não encontrada";
+                die();
+            }
+
+
+            /**
+             * condicional caso seja src e não encontre a tabela ele para toda a execução
+             **/
+            if(($smtp->errorCode() != "00000") and $origin == "src"){
                 print "Tabela de origem não encontrada";
                 die();
             }
@@ -281,6 +286,9 @@ class Migration_Database
 
         foreach($arr as $k=>$p)
         {
+            //continuando para não inserir o id (inserir id automaticamente);
+            if($k == 'id' or $k == 'ID') continue;
+
             $keys[] = $k;
             $keys_dot[] = ":".$k;
             $values[":".$k] = $p;
@@ -297,24 +305,30 @@ class Migration_Database
         $stmt->execute($values);
 
 
-        /**
-         * printando de duas formas se for um array de pks ou uma só pk
-        **/
-        if(is_array($this->pk))
+        if($stmt->errorInfo()[0] == '00000')
         {
-            $pp = [];
+          /**
+           * printando de duas formas se for um array de pks ou uma só pk
+          **/
+          if(is_array($this->pk))
+          {
+              $pp = [];
 
-            foreach($this->pk as $pks){
-                $pp[] = "[pk=$pks]".$arr[$pks];
-            }
+              foreach($this->pk as $pks){
+                  $pp[] = "[pk=$pks]".$arr[$pks];
+              }
 
-            $pp = implode(',', $pp);
+              $pp = implode(',', $pp);
 
-            print "\n<b>Criado</b> o registro na table $this->table, $pp";
-        }
-        else
-        {
-            print "\n<b>Criado</b> o registro na table $this->table, [pk=$this->pk]".$arr[$this->pk];
+              print "\n<b>Criado</b> o registro na table $this->table, $pp";
+          }
+          else
+          {
+              print "\n<b>Criado</b> o registro na table $this->table, [pk=$this->pk]".$arr[$this->pk];
+          }
+        }else{
+          print "\n<b>[ERROR] ao Criar</b> o registro - ".$stmt->errorInfo()[2];
+
         }
 
     }
@@ -347,10 +361,16 @@ class Migration_Database
                 $pk_w = "$pks = '".$arr[$pks]."'";
             }
 
-            $pp = implode(',', $pp);
+            try
+            {
+              $pp = implode(',', $pp);
 
-            $pk_w = implode(' and ', $pp);
+              $pk_w = is_array($pk_w) and !empty($pk_w) ? implode(' and ', $pk_w) : $pk_w;
 
+            }catch(Exception $e)
+            {
+              print $e->message();
+            }
 
 
             $print = "\n<b>atualizado</b> o registro na table $this->table, $pp";
@@ -400,13 +420,13 @@ $ar = [
         "database" => ""
     ],
     "clone" => [
-        "user" => "dev",
-        "host" => "localhost",
+        "user" => "",
+        "host" => "",
         "pass" => "@",
         "database" => ""
-    ],
+    ]
 ];
 
 $migdb = new Migration_Database($ar);
 
-$migdb->migrate(["table"=>"qualidade", "pk"=>['pk1', 'pk2'], "where"=>["key"=>"value"]]);
+$migdb->migrate(["table"=>"producao", "pk"=>['final', 'chave'], "where"=>["key"=>"val"]]);
